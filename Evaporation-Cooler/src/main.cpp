@@ -7,8 +7,26 @@ unsigned volatile char* pinB = (unsigned char*) 0x23;
 unsigned volatile char* sreg = (unsigned char*) 0x5F;
 unsigned volatile char* eicrb = (unsigned char*) 0x6A;
 unsigned volatile char* eimsk = (unsigned char*) 0x3D;
+
+int water_level_value;
+int water_level_pin = A5; // USING PIN 5
+
 int position=0;
 Servo x;
+
+
+
+
+enum STATES {
+  LOW_WATER
+}
+
+STATES currentState;
+
+void OnLowWaterState() {
+  currentState = STATES.LOW_WATER;
+}
+
 void setup() {
   *sreg = 0b10000000;
   pinMode(*ddrB, OUTPUT);
@@ -35,5 +53,12 @@ ISR(INT4_vect)
   }
   delay(10000);
   x.write(position);
+
+	water_level_value = analogRead(water_level_pin); /// returns a max value of 350 when full
+  if(water_level_value < 25 && currentState != STATES.LOW_WATER) {
+    OnLowWaterState(); // tap this function once if we need to change states to low water
+  }
+
+
   delay(500);
 }
