@@ -37,8 +37,16 @@ void setup() {
   *eimsk = 0x10;
 }
 
+void updateWaterLevelReading() {
+  water_level_value = analogRead(water_level_pin); /// returns a max value of 350 when full
+  if(water_level_value < 25 && currentState != STATES.LOW_WATER) {
+    OnLowWaterState(); // tap this function once if we need to change states to low water
+  }
+}
+
 void loop() 
 {
+  updateWaterLevelReading();
   delay(500);
 }
 
@@ -54,10 +62,7 @@ ISR(INT4_vect)
   delay(10000);
   x.write(position);
 
-	water_level_value = analogRead(water_level_pin); /// returns a max value of 350 when full
-  if(water_level_value < 25 && currentState != STATES.LOW_WATER) {
-    OnLowWaterState(); // tap this function once if we need to change states to low water
-  }
+
 
 
   delay(500);
