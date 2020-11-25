@@ -19,19 +19,16 @@ void setup() {
 
 void loop() 
 {
-  delay(500);
+  
 }
 
 ISR(INT4_vect)
 {
-  delay(500);
+  
   position += 90;
-  delay(500);
   if(position > 190)
   {
     position = 0;
   }
-  delay(10000);
   x.write(position);
-  delay(500);
 }
