@@ -5,7 +5,9 @@ unsigned volatile char* pinB = (unsigned char*) 0x23;
 unsigned volatile char* sreg = (unsigned char*) 0x5F;
 unsigned volatile char* eicrb = (unsigned char*) 0x6A;
 unsigned volatile char* eimsk = (unsigned char*) 0x3D;
+
 int position=0;
+
 Servo x;
 void setup() {
   *sreg = 0b10000000;
