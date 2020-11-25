@@ -29,7 +29,7 @@ ISR(INT4_vect)
 {
   
   position += 90;
-  if(position > 190)
+  if(position >= 180)
   {
     position = 0;
   }
