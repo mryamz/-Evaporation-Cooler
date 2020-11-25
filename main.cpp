@@ -9,7 +9,7 @@ unsigned volatile char* eicrb = (unsigned char*) 0x6A;
 unsigned volatile char* eimsk = (unsigned char*) 0x3D;
 
 int water_level_value; // not wet when 0, fully wet when 350
-int water_level_pin = A5; // USING analogue PIN 5
+int water_level_pin = A5; // USING analogue PIN 5 hll
 
 int position=0;
 Servo x;
