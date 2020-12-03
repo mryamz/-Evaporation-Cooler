@@ -9,7 +9,9 @@ int currentState = 0; //0 = off state, 1 = idle state
 int stateButtonTime = 0; //This is used to debouce the on off button signals
 int stateButtonLastTime = 0; //This is used to debouce the on off button signals
 int yellowLEDPin = 14; //Digital Pin 14
-int greenLEDPin = 15; //Digital Pin 13
+int greenLEDPin = 15; //Digital Pin 15
+int blueLEDPin = 16; //Digital Pin 16
+int redLEDPin = 17; //Digital Pin 17
 
 //Following declerations are needed to run the water level sensor
 int waterSensorPin = A0; //Analog pin
@@ -38,44 +40,94 @@ void setup()
   initalizeState(); //Function to intialize pin for on/off button
   intializeServo();//Function to intialize all servo parts
   initalizeLCD();//Function to intialize all the parts needed for the LCD monitor
+  updateTempAndHumid(); //Get intial readings
+  updateWaterLevel(); //Get intial readings
   Serial.begin(9600);//Begin Serial communication
 }
 void loop() 
 {
   int chk = DHT.read11(DHT11_PIN); //This just needs to be at the start of every loop or the temp and humidity sensor doesnt work
-  setState();
-  Serial.println(currentState);//used for debugging
-  Serial.println(waterLevel);//used for debugging
+  checkState(); //Checks and sets the currentState variable
+  setState(); //calls functions needed for the determined state
 }
 
 
-void setState()
+
+void setLED(int red, int blue, int yellow, int green) //Sets the Leds based on a binary passed in
 {
+  digitalWrite(greenLEDPin,green);
+  digitalWrite(redLEDPin,red);
+  digitalWrite(yellowLEDPin,yellow);
+  digitalWrite(blueLEDPin,blue);
+}
+
+void checkState()//Monitors the active state based on project parameters
+{
+  if(currentState != 0)//If the ISR on/off button has not been pressed
+  {
+    if(waterLevel < 250) //Highest priority state condition
+    {
+      currentState = 3;
+    }
+    else if(currentTemp > 26) //Second priority state condition
+    {
+      currentState = 2;
+    }
+    else //If both other state conditions are in check stand by in idle mode
+    {
+      currentState = 1;
+    }
+  }
+}
+void setState() //Different functions based on state
+{
+
   if(currentState == 0) //Off and disabled
   {
+    setLED(0,0,1,0); //Set the yellow LED
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("OFF");
-    delay(1000);
+    delay(500);
     lcd.clear();
-    digitalWrite(yellowLEDPin, HIGH); //This code needs to be streamlined for all the 4 LEDs
-    digitalWrite(greenLEDPin, LOW);//This code needs to be streamlined for all the 4 LEDs
     detachInterrupt(servoButtonPin);//Stops the servo intrrupt from working
+    //Need some code to turn off the fan here
   }
   if(currentState == 1) //On and idle
   {
+    setLED(0,0,0,1); //Set the green LED
     attachInterrupt(servoButtonPin, servoButton, RISING);//Reattach the interrupt after changing states
-    digitalWrite(greenLEDPin, HIGH);//This code needs to be streamlined for all the 4 LEDs
-    digitalWrite(yellowLEDPin, LOW);//This code needs to be streamlined for all the 4 LEDs
     updateTempAndHumid();//Gets and sets the global variable "currentTemprature" to the current temp
     updateLCD();//This function new readings from updateTempAndHumid()
     updateWaterLevel();//This function gets the current water level reading
+    //Need some code to turn off the fan here
+  }
+  if(currentState == 2) //Fan running/temp to high
+  {
+    setLED(0,1,0,0); //Set the Blue LED
+    updateTempAndHumid(); //Check to see if temp is back in accpetable ranges
+    updateWaterLevel(); //See if the water level is too low, which would overide this state and send the machine to the error state
+    //Need some code to turn on the fan here
+  }
+  if(currentState == 3) //Error State
+  {
+    setLED(1,0,0,0); //Set the Red LED
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Error!");
+    lcd.setCursor(0,1);
+    lcd.print("Add More Water");
+    updateWaterLevel(); //Only check the water level until issue is resolved
+    detachInterrupt(servoButtonPin); //Stops the servo from working
+    //Need some code to turn off the fan here
   }
 }
 void initalizeState()
 {
+  pinMode(blueLEDPin,OUTPUT);//State LED
+  pinMode(redLEDPin,OUTPUT);//State LED
   pinMode(yellowLEDPin,OUTPUT); //State LED
-  pinMode(greenLEDPin, OUTPUT);//State LED
+  pinMode(greenLEDPin,OUTPUT);//State LED
   attachInterrupt(stateButtonPin,updateStateISR, RISING); //Attach the on off state inttrupt routine
 }
 void updateStateISR()
@@ -118,7 +170,7 @@ void initalizeLCD()
   lcd.print("Swamp Cooler");                                   
   lcd.setCursor(0,1);//Begin writing at the second line, first spot
   lcd.print("Simulation");
-  delay(3000);                                             
+  delay(2000);                                             
   lcd.clear();                                              
 }
 
