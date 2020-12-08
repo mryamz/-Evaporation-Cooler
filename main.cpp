@@ -3,6 +3,31 @@
 #include <Arduino.h>
 #include <Servo.h>//Servo lib
 
+volatile unsigned char *portB = (unsigned char*) 0x25;
+volatile unsigned char *ddrB = (unsigned char*) 0x24;
+volatile unsigned char *pinB = (unsigned char*) 0x23;
+
+volatile unsigned char *portH = (unsigned char*) 0x102;
+volatile unsigned char *ddrH = (unsigned char*) 0x101;
+volatile unsigned char *pinH = (unsigned char*) 0x100;
+
+volatile unsigned char *portG = (unsigned char*) 0x34;
+volatile unsigned char *ddrG = (unsigned char*) 0x33;
+volatile unsigned char *pinG = (unsigned char*) 0x32;
+
+volatile unsigned char *portE = (unsigned char*) 0x2E;
+volatile unsigned char *ddrE = (unsigned char*) 0x2D;
+volatile unsigned char *pinE = (unsigned char*) 0x2C;
+
+volatile unsigned char *portJ = (unsigned char*) 0x105;
+volatile unsigned char *ddrJ = (unsigned char*) 0x104;
+volatile unsigned char *pinJ = (unsigned char*) 0x103;
+
+volatile unsigned char *portF = (unsigned char*) 0x31;
+volatile unsigned char *ddrF = (unsigned char*) 0x30;
+volatile unsigned char *pinF = (unsigned char*) 0x2F;
+
+
 //Following Declerations are needed to run the state machine tracking button
 int stateButtonPin = 1; //Digital Pin 3
 int currentState = 0; //0 = off state, 1 = idle state
@@ -27,12 +52,13 @@ int fanPosition = 0;//This value keeps track of what angle the servo is at
 unsigned long servoButtonTime = 0;//This is used to debounce the servo input
 unsigned long servoButtonLastTime = 0;//This is used to debounce the servo input
 Servo motor;//This is the servo motor variable 
-
+int fanPin = 11;
 //The following declerations are needed to run the humidity and Temp sensor
 #define DHT11_PIN 12 //The pin for this sensor is Digital pin 12
 dht DHT;
 float currentTemp;
 float currentHumid;
+
 
 
 void setup() 
@@ -69,7 +95,7 @@ void checkState()//Monitors the active state based on project parameters
     {
       currentState = 3;
     }
-    else if(currentTemp > 26) //Second priority state condition
+    else if(currentTemp > 22) //Second priority state condition
     {
       currentState = 2;
     }
@@ -79,6 +105,13 @@ void checkState()//Monitors the active state based on project parameters
     }
   }
 }
+/*void updateTime(){
+  if(serialTracker == 1)
+  {
+    serialTracker = 0;
+    Serial.print(time(thyme));
+  }
+} */
 void setState() //Different functions based on state
 {
 
@@ -90,24 +123,26 @@ void setState() //Different functions based on state
     lcd.print("OFF");
     delay(500);
     lcd.clear();
-    detachInterrupt(servoButtonPin);//Stops the servo intrrupt from working
-    //Need some code to turn off the fan here
-  }
+    detachInterrupt(servoButtonPin);//Stops the servo interrupt from working
+    //updateTime();
+    digitalWrite(fanPin, 0);
+  } 
   if(currentState == 1) //On and idle
   {
+    //updateTime();
     setLED(0,0,0,1); //Set the green LED
     attachInterrupt(servoButtonPin, servoButton, RISING);//Reattach the interrupt after changing states
     updateTempAndHumid();//Gets and sets the global variable "currentTemprature" to the current temp
     updateLCD();//This function new readings from updateTempAndHumid()
     updateWaterLevel();//This function gets the current water level reading
-    //Need some code to turn off the fan here
+    digitalWrite(fanPin, 0);
   }
   if(currentState == 2) //Fan running/temp to high
   {
     setLED(0,1,0,0); //Set the Blue LED
     updateTempAndHumid(); //Check to see if temp is back in accpetable ranges
     updateWaterLevel(); //See if the water level is too low, which would overide this state and send the machine to the error state
-    //Need some code to turn on the fan here
+    digitalWrite(fanPin, 1);
   }
   if(currentState == 3) //Error State
   {
@@ -119,15 +154,14 @@ void setState() //Different functions based on state
     lcd.print("Add More Water");
     updateWaterLevel(); //Only check the water level until issue is resolved
     detachInterrupt(servoButtonPin); //Stops the servo from working
-    //Need some code to turn off the fan here
+    digitalWrite(fanPin, 0);
   }
 }
 void initalizeState()
 {
-  pinMode(blueLEDPin,OUTPUT);//State LED
-  pinMode(redLEDPin,OUTPUT);//State LED
-  pinMode(yellowLEDPin,OUTPUT); //State LED
-  pinMode(greenLEDPin,OUTPUT);//State LED
+  *ddrJ = 0b00000011;//State LED for yellow and green
+  *ddrH = 0b00000011;//State LED for Red and Blue
+  *ddrB = 0b00100000; //Set the fan
   attachInterrupt(stateButtonPin,updateStateISR, RISING); //Attach the on off state inttrupt routine
 }
 void updateStateISR()
@@ -136,7 +170,8 @@ void updateStateISR()
   if(stateButtonTime - stateButtonLastTime > 250)//Used for button debounce
   {
     currentState++; //change the state
-    if(currentState > 1) //if the state exceeds 1, reset it back to 0 *NOTE* may need to change functionality when adding the running and error states
+    //serialTracker++;
+    if(currentState > 1) //if the state exceeds 1, reset it back to 0 
     {
       currentState = 0;
     }
@@ -188,7 +223,7 @@ void updateTempAndHumid()
 void intializeServo()
 {
  
-  pinMode(servoPin, OUTPUT);//Set digital pin 13 to output
+  *portB = 0b00000000;//Set digital pin 13 to output
   motor.attach(13);//Attach the motor variable to pin 13
   motor.write(fanPosition);//Write the intial servo position (0);
   attachInterrupt(servoButtonPin, servoButton, RISING);//Create the interrupt for digital pin 2(that is zero internally), name the ISR function, and trigger the change on the rising edge only
